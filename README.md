@@ -3,7 +3,9 @@
 `cores/jarvis_screen_core.py` — a Tater core hosting a full-screen Iron-Man
 style "JARVIS SCREEN" web display (default port 8610) controlled by Hydra:
 
-- Generative card UI (text/web/YouTube/HA climate/camera/video/chart/console)
+- Generative card UI (text/web/YouTube/HA climate/camera/video/chart/console/
+  music — the music card mirrors and controls the Tater music cores' playback,
+  including browser audio)
   with per-screen profiles, layouts, and a visual "Edit Layout on Screen"
   placement editor.
 - Arc reactor that pulses with TTS audio; red on access-denied.
