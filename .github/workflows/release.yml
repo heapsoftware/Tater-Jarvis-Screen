@@ -1,0 +1,111 @@
+name: Release
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Read core version
+        id: version
+        run: |
+          VERSION=$(python3 <<'PYEOF'
+          import ast, re
+          src = open('cores/jarvis_screen_core.py', encoding='utf-8').read()
+          m = re.search(r"^__version__\s*=\s*(.+)$", src, re.M)
+          print(ast.literal_eval(m.group(1).strip()) if m else '')
+          PYEOF
+          )
+          if [ -z "$VERSION" ]; then
+            echo "Could not read __version__ from cores/jarvis_screen_core.py"
+            exit 1
+          fi
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+
+      - name: Create GitHub release if new
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RELEASE_VERSION: ${{ steps.version.outputs.version }}
+        run: |
+          TAG="v${RELEASE_VERSION}"
+          if gh release view "$TAG" >/dev/null 2>&1; then
+            echo "Release $TAG already exists — nothing to do."
+            exit 0
+          fi
+          NOTES_FILE=$(mktemp)
+          python3 <<'PYEOF' > "$NOTES_FILE"
+          import os
+          import re
+          import subprocess
+
+          tag = "v" + os.environ["RELEASE_VERSION"]
+          tags = subprocess.run(
+              ["git", "tag", "--sort=-creatordate"],
+              capture_output=True, text=True, check=True,
+          ).stdout.split()
+          # Only this repo's own release tags count.
+          prev = next(
+              (t for t in tags if t != tag and re.match(r"^v\d+\.\d+\.\d+$", t)), ""
+          )
+          commit_range = f"{prev}..HEAD" if prev else "HEAD"
+          subjects = subprocess.run(
+              ["git", "log", "--format=%s", commit_range],
+              capture_output=True, text=True, check=True,
+          ).stdout.splitlines()
+          # Drop CI/manifest bookkeeping commits from the notes.
+          subjects = [
+              re.sub(r"\s*\(v[\d.]+\)\s*$", "", s)
+              for s in subjects
+              if not s.lower().startswith(("chore:", "ci:", "release:", "build:"))
+          ]
+
+          features = [
+              s for s in subjects
+              if s.lower().startswith(
+                  ("add", "new", "improve", "enable", "introduce", "support", "update", "rename")
+              )
+          ]
+          fixes = [
+              s for s in subjects
+              if s.lower().startswith(("fix", "correct", "handle", "prevent"))
+          ]
+          other = [s for s in subjects if s not in features and s not in fixes]
+
+          print("## What's changed")
+          print()
+          for title, rows in (("Features", features), ("Fixes", fixes), ("Other", other)):
+              if rows:
+                  print(f"### {title}")
+                  for row in rows:
+                      print(f"- {row}")
+                  print()
+          if prev:
+              print(
+                  "**Full Changelog**: "
+                  f"https://github.com/{os.environ['GITHUB_REPOSITORY']}/compare/{prev}...{tag}"
+              )
+          else:
+              print(
+                  "**Full Changelog**: "
+                  f"https://github.com/{os.environ['GITHUB_REPOSITORY']}/commits/{tag}"
+              )
+          PYEOF
+          echo "--- release notes ---"
+          cat "$NOTES_FILE"
+          gh release create "$TAG" \
+            cores/jarvis_screen_core.py \
+            core_manifest.json \
+            --title "Jarvis Screen Core $TAG" \
+            --notes-file "$NOTES_FILE"
