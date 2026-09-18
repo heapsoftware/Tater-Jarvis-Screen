@@ -16,7 +16,7 @@ through the screen, raises alerts, and locks/unlocks displays.
   LAN at `http://<docker-host>:8610/?screen=<profile>`.
 - **State:** all persistent state lives in Redis under the `jarvis_screen:*`
   namespace (plus the host-managed `jarvis_screen_core_settings` hash).
-- **As of v1.49.1.**
+- **As of v1.54.0.**
 
 > **Renamed from Jarvis HUD.** v1.47.0 renamed the core `jarvis_hud` →
 > `jarvis_screen` (file, core id, Redis namespace, and LLM tools). For the
@@ -191,7 +191,8 @@ you author in the manager — those are always exactly where you put them).
 | `CARD_PERSIST_AI` | on | **On:** generated cards are kept on their screen until removed. **Off:** generated cards are session-only — they vanish when the screen page next loads, and saved layouts are never touched. Either way, a saved layout card the assistant re-targets is only *borrowed* for the session — a reload restores the saved layout. |
 | `AI_YOUTUBE_AUTOPLAY` | on | YouTube players JARVIS generates (or re-points) start playing by themselves (browser permitting). Saved layout cards never autoplay on their own. |
 | `CARD_DRAG` | `free` | Head-dragging cards in everyday use: **free** (anywhere, even over the reactor), **avoid_reactor** (drops over the reactor snap to the nearest clear spot), **off** (cards are fixed). Dragging outside edit mode is session-visual — use *Edit Layout on Screen* to save placements. |
-| `AI_SIZE_<TYPE>` | *(blank)* | Default size for AI cards of each built-in type — `AI_SIZE_TEXT`, `AI_SIZE_WEB`, `AI_SIZE_YOUTUBE`, `AI_SIZE_VIDEO`, `AI_SIZE_HA_CAMERA`, `AI_SIZE_HA_CLIMATE`, `AI_SIZE_CHART`, `AI_SIZE_CONSOLE`, `AI_SIZE_GREETING`, `AI_SIZE_ENTITY_STATE`. Value is `'WxH'` percent of screen (e.g. `46x28`), or `'50%'` = take that share of the screen area still free around the current cards (auto-shaped to the largest open rect). Blank = the built-in per-type default; a size the LLM sends with the card still wins; re-pointed layout cards keep their saved size. |
+| `MUSIC_AUTO_CARD` | on | When a music queue plays at this screen (Personal Music Core screen destination), create a Music Player card automatically to render the browser playback. A music card you placed (even hidden) is never replaced. |
+| `AI_SIZE_<TYPE>` | *(blank)* | Default size for AI cards of each built-in type — `AI_SIZE_TEXT`, `AI_SIZE_WEB`, `AI_SIZE_YOUTUBE`, `AI_SIZE_VIDEO`, `AI_SIZE_HA_CAMERA`, `AI_SIZE_HA_CLIMATE`, `AI_SIZE_CHART`, `AI_SIZE_CONSOLE`, `AI_SIZE_GREETING`, `AI_SIZE_ENTITY_STATE`, `AI_SIZE_MUSIC`. Value is `'WxH'` percent of screen (e.g. `46x28`), or `'50%'` = take that share of the screen area still free around the current cards (auto-shaped to the largest open rect). Blank = the built-in per-type default; a size the LLM sends with the card still wins; re-pointed layout cards keep their saved size. |
 
 ### Home Assistant
 
@@ -232,6 +233,7 @@ access-denied path without a camera).
 | HA Climate / Thermostat | `ha_climate` | Needs an entity (picker) |
 | Camera Feed | `ha_camera` | HA or UniFi Protect; snapshot or live MJPEG (picker) |
 | Entity Status | `entity_state` | Sensor / speaker readouts (picker) |
+| Music Player | `music` | Mirrors the Personal Music / Music Core queue — see [Music card](#music-card) |
 
 Card fields: **Card Id** (JARVIS reaches the card by id — keep it meaningful,
 e.g. `front_door`), **Title**, **Tag** (the `// TAG` header line), **Badge**,
@@ -425,6 +427,40 @@ Climate, entity-state, and snapshot-mode camera cards resolve through the
 win); otherwise the `HA_BASE_URL` / `HA_TOKEN` core settings are the direct
 REST fallback. With neither configured, HA-backed cards render empty.
 
+## Music card
+
+The `music` card mirrors the active queue of either Tater music core
+(**Personal Music Core**, else the built-in **Music Core**): now playing
+(title / artist / album / artwork), a seek bar, transport (play-pause, next,
+previous, stop, shuffle, repeat), a queue list, and browser playback. The
+core's watcher polls both cores' player state every ~2 s and pushes changes
+over SSE; the card never writes to the music cores directly — transport
+buttons go to the screen server, which calls the live music core, so queue
+logic, history, sleep timers and smart shuffle stay the music core's job.
+Which queue a screen shows: a queue playing **at this screen** (below), then
+the unlocked person's queue, then the household queue. Stream and artwork
+bytes are proxied by the screen server behind short-lived refs — no music-core
+stream tokens or provider credentials ever reach the page.
+
+**Browser playback:** when the queue's targets include `screen:<key>` (the
+Personal Music Core's screen destination — a playback destination like a
+satellite; the music core drives no hardware and the browser is the renderer),
+the card plays the stream in this browser, following the queue's transport
+timeline (track changes, pause/resume, position re-sync). Until a music core
+is configured with the screen destination (spec:
+`docs/specs/screen-target-playback-spec.md`), **PLAY HERE** mirrors the queue
+in the browser manually; the core's own speakers keep playing, so mind the
+double audio. Browser volume ducks to 20% while JARVIS speaks.
+
+**Auto-show:** with playback targeted at this screen, a music card is created
+automatically if none exists anywhere on it (a music card you placed — even
+hidden — is never replaced; turn the behavior off with the **Music Card
+Auto-Show** core setting). JARVIS also keeps one on screen for
+"play some music" / "what's playing" requests (`jarvis_screen_card` with
+`type music`, id `jarvis_music` — the screen reuses the existing card and
+switches layouts for you). The **AI_SIZE_MUSIC** setting overrides the
+generated card's default footprint (34×26).
+
 ---
 
 ## Hydra (the LLM drives the screen)
@@ -434,7 +470,7 @@ Web UI):
 
 | Tool | Example prompt → result |
 |---|---|
-| `jarvis_screen_card` | "What's the temperature?" → an `ha_climate` card with working +/− controls. "Show me the front door" → an `ha_camera` card (`feed_mode: live` for the real-time stream). Cards can be created, shown, hidden, updated, deleted; `position: "auto"` finds free space. |
+| `jarvis_screen_card` | "What's the temperature?" → an `ha_climate` card with working +/− controls. "Show me the front door" → an `ha_camera` card (`feed_mode: live` for the real-time stream). "Play some music" → the music core starts the queue and a `music` card shows it with transport + browser playback. Cards can be created, shown, hidden, updated, deleted; `position: "auto"` finds free space. |
 | `jarvis_screen_layout` | "Switch to the security screen" → the named layout with the standard transition. |
 | `jarvis_screen_reactor` | "Move the reactor to the top left" / "Put the reactor back" → preset or `{x, y, scale}`; recolor (cyan/red/amber/green/`#rrggbb`), relabel. |
 | `jarvis_screen_say` | "Say 'right away, sir'" → TTS through the screen (browser engine) with the reactor pulsing on the waveform. |
