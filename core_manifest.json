@@ -5,9 +5,9 @@
       "id": "jarvis_screen",
       "name": "Jarvis Screen",
       "module_key": "jarvis_screen_core",
-      "version": "1.53.0",
+      "version": "1.53.1",
       "min_tater_version": "164",
-      "description": "JARVIS SCREEN: a full-screen Iron-Man style display controlled by Hydra. Generative card UI (text/web/YouTube/HA climate/camera), arc reactor that pulses with TTS audio, per-screen unlock methods (Tater Face ID camera scan, tap-to-unlock, or a 4-digit PIN) with optional per-screen access-denied / access-granted voices, per-screen profiles, in-browser voice input (tap-to-talk, 'hey jarvis' wake word, follow-up conversations, photo-based Face ID enrollment, the per-screen face allowlist as the unlock gate, per-screen layout sets (which layouts a screen offers, in nav order), a visual layout editor ('Edit Layout on Screen': drag/resize cards on a live screen, saved as per-screen card placements over the layout's base geometry), a Screens manager tab to add/manage screen profiles, a Cards manager tab to add/manage cards from built-in templates (JARVIS chat, web browser, YouTube, camera, ...) plus UniFi Protect + Home Assistant entity pickers, and (optionally in settings) the person a screen was face-unlocked by reported to the LLM on that screen's voice turns until it locks again).",
+      "description": "JARVIS SCREEN: a full-screen Iron-Man style display controlled by Hydra. It builds generative cards and layouts (JARVIS chat, web, YouTube, camera, HA entities) around a TTS-pulsing arc reactor, with per-screen unlock (Face ID, tap, PIN), in-browser voice input (tap-to-talk, 'hey jarvis' wake word, follow-ups), and visual screens/cards/layout managers including a drag-to-place layout editor. Full setup and configuration: docs/jarvis_screen.md.",
       "settings_category": "Jarvis Screen Settings",
       "required_settings_count": 21,
       "autostart_key": "jarvis_screen_core_running",
@@ -23,7 +23,7 @@
         "voice"
       ],
       "entry": "cores/jarvis_screen_core.py",
-      "sha256": "07da16191fd6c95160a367ab87bad215df091d723426f69b1255e6c01a95a51a"
+      "sha256": "b227592c9a1703d0f48bb0900c83bbf12eab2cc42715d8c5c8943b3616ab46cd"
     }
   ]
 }
