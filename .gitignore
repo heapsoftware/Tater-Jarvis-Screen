@@ -7,3 +7,8 @@
 **/__pycache__/
 /.pytest_cache/
 **/.pytest_cache/
+
+# Local-only dev files (never commit or push)
+/CLAUDE.md
+/tests/
+/tools/

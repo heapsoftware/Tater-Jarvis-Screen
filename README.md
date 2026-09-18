@@ -36,10 +36,11 @@ https://raw.githubusercontent.com/heapsoftware/Tater-Jarvis-Screen/main/core_man
 The core then appears in the core shop from this repo; install and later
 updates happen through the Cores page (**Update** button), which downloads the
 `.py`, sha256-verifies it against this repo's manifest, and restarts the core
-runtime. A GitHub Actions workflow regenerates `core_manifest.json` on every
-push, so the store manifest is always in sync with the committed core — the
-Update button never rolls the core back. If a core file is ever missing at
-boot, Tater's auto-restore re-downloads it from this store.
+runtime. The manifest is kept in sync with the committed core on every
+release — the release workflow verifies the manifest's version and sha256
+against `cores/jarvis_screen_core.py` before publishing and fails loudly on a
+mismatch, so the Update button never rolls the core back. If a core file is
+ever missing at boot, Tater's auto-restore re-downloads it from this store.
 
 **Manual install.** Copy `cores/jarvis_screen_core.py` from a release asset
 (or from a fresh clone) into the container's cores directory. Do **not** use
@@ -52,16 +53,6 @@ brand-new core, never for routine updates.
 ## Versioning
 
 The version lives in `__version__` at the top of
-`cores/jarvis_screen_core.py`, pinned by an assertion in
-`tests/test_jarvis_screen_core.py`. Every functional fix ships with a bump;
-pushes to `main` are tagged `v<version>` and published as GitHub Releases
-with auto-generated changelogs by `.github/workflows/release.yml`.
-
-## Tests
-
-```bash
-python3 -m pytest tests/test_jarvis_screen_core.py tests/test_jarvis_screen_purge_coverage.py -q
-```
-
-The suite is self-contained (FakeRedis + importlib loader, no live Tater
-required).
+`cores/jarvis_screen_core.py`. Every functional fix ships with a bump; pushes
+to `main` are tagged `v<version>` and published as GitHub Releases with
+auto-generated changelogs by `.github/workflows/release.yml`.

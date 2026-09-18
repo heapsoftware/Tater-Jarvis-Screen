@@ -34,6 +34,38 @@ jobs:
           fi
           echo "version=$VERSION" >> "$GITHUB_OUTPUT"
 
+      - name: Verify core manifest matches the core
+        run: |
+          python3 <<'PYEOF'
+          import ast, hashlib, json, re, sys
+          src = open('cores/jarvis_screen_core.py', encoding='utf-8').read()
+          version = ast.literal_eval(
+              re.search(r"^__version__\s*=\s*(.+)$", src, re.M).group(1).strip()
+          )
+          sha = hashlib.sha256(
+              open('cores/jarvis_screen_core.py', 'rb').read()
+          ).hexdigest()
+          manifest = json.load(open('core_manifest.json', encoding='utf-8'))
+          items = [c for c in manifest.get('cores', []) if c.get('id') == 'jarvis_screen']
+          if not items:
+              sys.exit('core_manifest.json has no jarvis_screen entry')
+          item = items[0]
+          problems = []
+          if item.get('version') != version:
+              problems.append(
+                  f"manifest version {item.get('version')} != core __version__ "
+                  f"{version} — regenerate core_manifest.json before pushing"
+              )
+          if str(item.get('sha256', '')).lower() != sha:
+              problems.append(
+                  'manifest sha256 does not match cores/jarvis_screen_core.py '
+                  '— regenerate core_manifest.json before pushing'
+              )
+          if problems:
+              sys.exit('\n'.join(problems))
+          print(f'manifest OK: v{version}')
+          PYEOF
+
       - name: Create GitHub release if new
         env:
           GH_TOKEN: ${{ github.token }}
