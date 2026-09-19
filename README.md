@@ -17,6 +17,14 @@ style "JARVIS SCREEN" web display (default port 8610) controlled by Hydra:
 - Live MJPEG camera feeds (Home Assistant proxy or a UniFi Protect direct
   pipeline) and camera-event automations (fullscreen popups + spoken
   announcements).
+- Satellite voice control: requests spoken at a screen's **Linked Satellite**
+  (a Tater SAT) drive that screen by voice — card, layout, reactor, say,
+  alert, and lock actions route to the linked screen automatically, with no
+  screen name needed; naming a screen ("show on the kitchen screen") targets
+  that screen instead, and a SAT linked to no screen falls back to `main`.
+  The SAT itself does the speaking; plain Q&A without a screen action leaves
+  no trace on the screen (a conversation mirror is specced in
+  `docs/specs/satellite-voice-mirror-spec.md`).
 - Optional per-screen IP binding (a display on a bound IP always opens that
   screen, overriding `?screen=`), with opt-in `X-Real-IP`/`X-Forwarded-For`
   trust behind a trusted LAN reverse proxy.
