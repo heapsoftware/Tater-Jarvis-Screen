@@ -425,16 +425,35 @@ Per screen, `voice_input` = `none` / `tap` / `wake` (see the Screens table).
 
 A camera connected to the screen device **itself** (the same camera Face ID
 scans through), shown live in the screen's browser via getUserMedia. Add a
-`camera` card to any layout from the Cards manager — every `camera` card is
-a view of that one built-in camera. Say "open the camera" and JARVIS reuses
-a `camera` card already on any layout (switching the screen to it, your
-saved card content untouched) or creates an auto-placed one
-(`jarvis_screen_camera open`); while it shows, questions like "what am I
-holding right now", "can you describe what you see", or "what am I looking
-at" make him grab the current frame (`jarvis_screen_camera look`) and
-answer through Tater's vision LLM (Settings › Vision). "Close the camera"
-removes the card and releases the camera. Grabbed frames are in-memory
-only — nothing is stored in Redis or on disk.
+`camera` card to any layout from the Cards manager (**Device Camera (this
+screen)** preset) — every `camera` card is a view of that one built-in
+camera, so a second card is another window on the same feed, not another
+camera. The voice side runs through the `jarvis_screen_camera` tool
+(open / look / close).
+
+**Using it by voice:**
+
+- **"Open the camera"** — shows the live feed. If a visible `camera` card
+  already exists on any layout, the screen switches to that layout and
+  reuses your card as-is (your saved card content untouched); otherwise
+  JARVIS creates an auto-placed card (footprint from the **AI_SIZE_CAMERA**
+  setting). A hidden camera card is never revealed — he makes his own
+  auto-placed card instead.
+- **"What am I holding right now?"**, **"Can you describe what you see?"**,
+  **"What am I looking at?"** — with the feed showing, JARVIS grabs the
+  current frame (`jarvis_screen_camera look`) and answers through Tater's
+  vision LLM. Any question works: your words become the vision prompt, so
+  "read the label on this box" is as valid as a describe-everything ask.
+- **"Close the camera"** — removes the card and releases the camera.
+
+**Notes:**
+
+- Vision answers come from the host's **Settings › Vision** (default
+  `qwen2.5-vl-7b-instruct` on an OpenAI-compatible API such as LM Studio);
+  if that backend is unreachable, JARVIS says so instead of guessing.
+- The camera runs only while a `camera` card is on screen; closing the last
+  one releases it immediately (the device's camera light goes off).
+- Grabbed frames are in-memory only — nothing is stored in Redis or on disk.
 
 ## Home Assistant
 
