@@ -429,7 +429,11 @@ scans through), shown live in the screen's browser via getUserMedia. Add a
 screen)** preset) — every `camera` card is a view of that one built-in
 camera, so a second card is another window on the same feed, not another
 camera. The voice side runs through the `jarvis_screen_camera` tool
-(open / look / close).
+(open / look / close). The feature is gated per screen by the **Device
+Camera** setting (Screens tab, off by default): with it off, camera requests
+are refused for that screen, camera cards can't be created on it, and its
+browser never sends camera frames — a camera card a layout already had
+renders an inert CAMERA OFF placeholder.
 
 **Using it by voice:**
 
