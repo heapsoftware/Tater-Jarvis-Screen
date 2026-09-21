@@ -5,11 +5,11 @@
       "id": "jarvis_screen",
       "name": "Jarvis Screen",
       "module_key": "jarvis_screen_core",
-      "version": "1.56.0",
+      "version": "1.57.0",
       "min_tater_version": "164",
       "description": "JARVIS SCREEN: a full-screen Iron-Man style display controlled by Hydra. It builds generative cards and layouts (JARVIS chat, web, YouTube, camera, HA entities) around a TTS-pulsing arc reactor, with per-screen unlock (Face ID, tap, PIN), in-browser voice input (tap-to-talk, 'hey jarvis' wake word, follow-ups), and visual screens/cards/layout managers including a drag-to-place layout editor. Full setup and configuration: docs/jarvis_screen.md.",
       "settings_category": "Jarvis Screen Settings",
-      "required_settings_count": 24,
+      "required_settings_count": 27,
       "autostart_key": "jarvis_screen_core_running",
       "tags": [
         "display",
@@ -23,7 +23,7 @@
         "voice"
       ],
       "entry": "cores/jarvis_screen_core.py",
-      "sha256": "45e39fa6e1cfee9880a3007933d7f4608252912faadcfac87a8298256a225026"
+      "sha256": "15215077b1096bb6a6c108b4e62d37d525eb59fdc3a2fe5edd98a0be78e71d53"
     }
   ]
 }
