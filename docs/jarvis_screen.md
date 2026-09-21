@@ -192,7 +192,7 @@ you author in the manager — those are always exactly where you put them).
 | `AI_YOUTUBE_AUTOPLAY` | on | YouTube players JARVIS generates (or re-points) start playing by themselves (browser permitting). Saved layout cards never autoplay on their own. |
 | `CARD_DRAG` | `free` | Head-dragging cards in everyday use: **free** (anywhere, even over the reactor), **avoid_reactor** (drops over the reactor snap to the nearest clear spot), **off** (cards are fixed). Dragging outside edit mode is session-visual — use *Edit Layout on Screen* to save placements. |
 | `MUSIC_AUTO_CARD` | on | When a music queue plays at this screen (Personal Music Core screen destination), create a Music Player card automatically to render the browser playback. A music card you placed (even hidden) is never replaced. |
-| `AI_SIZE_<TYPE>` | *(blank)* | Default size for AI cards of each built-in type — `AI_SIZE_TEXT`, `AI_SIZE_WEB`, `AI_SIZE_YOUTUBE`, `AI_SIZE_VIDEO`, `AI_SIZE_HA_CAMERA`, `AI_SIZE_HA_CLIMATE`, `AI_SIZE_CHART`, `AI_SIZE_CONSOLE`, `AI_SIZE_GREETING`, `AI_SIZE_ENTITY_STATE`, `AI_SIZE_MUSIC`. Value is `'WxH'` percent of screen (e.g. `46x28`), or `'50%'` = take that share of the screen area still free around the current cards (auto-shaped to the largest open rect). Blank = the built-in per-type default; a size the LLM sends with the card still wins; re-pointed layout cards keep their saved size. |
+| `AI_SIZE_<TYPE>` | *(blank)* | Default size for AI cards of each built-in type — `AI_SIZE_TEXT`, `AI_SIZE_WEB`, `AI_SIZE_YOUTUBE`, `AI_SIZE_VIDEO`, `AI_SIZE_HA_CAMERA`, `AI_SIZE_HA_CLIMATE`, `AI_SIZE_CHART`, `AI_SIZE_CONSOLE`, `AI_SIZE_GREETING`, `AI_SIZE_ENTITY_STATE`, `AI_SIZE_MUSIC`, `AI_SIZE_CAMERA`. Value is `'WxH'` percent of screen (e.g. `46x28`), or `'50%'` = take that share of the screen area still free around the current cards (auto-shaped to the largest open rect). Blank = the built-in per-type default; a size the LLM sends with the card still wins; re-pointed layout cards keep their saved size. |
 
 ### Home Assistant
 
@@ -232,6 +232,7 @@ access-denied path without a camera).
 | JARVIS Greeting | `greeting` | Speaks its Say Line when the layout appears, then opens the mic |
 | HA Climate / Thermostat | `ha_climate` | Needs an entity (picker) |
 | Camera Feed | `ha_camera` | HA or UniFi Protect; snapshot or live MJPEG (picker) |
+| Device Camera | `camera` | A camera connected to the screen device itself — see [Device camera](#device-camera-camera-card) |
 | Entity Status | `entity_state` | Sensor / speaker readouts (picker) |
 | Music Player | `music` | Mirrors the Personal Music / Music Core queue — see [Music card](#music-card) |
 
@@ -420,6 +421,21 @@ Per screen, `voice_input` = `none` / `tap` / `wake` (see the Screens table).
   pipeline (Public API + ffmpeg RTSPS decode). `feed_source: auto` picks per
   card.
 
+### Device camera (`camera` card)
+
+A camera connected to the screen device **itself** (the same camera Face ID
+scans through), shown live in the screen's browser via getUserMedia. Add a
+`camera` card to any layout from the Cards manager — every `camera` card is
+a view of that one built-in camera. Say "open the camera" and JARVIS reuses
+a `camera` card already on any layout (switching the screen to it, your
+saved card content untouched) or creates an auto-placed one
+(`jarvis_screen_camera open`); while it shows, questions like "what am I
+holding right now", "can you describe what you see", or "what am I looking
+at" make him grab the current frame (`jarvis_screen_camera look`) and
+answer through Tater's vision LLM (Settings › Vision). "Close the camera"
+removes the card and releases the camera. Grabbed frames are in-memory
+only — nothing is stored in Redis or on disk.
+
 ## Home Assistant
 
 Climate, entity-state, and snapshot-mode camera cards resolve through the
@@ -471,6 +487,7 @@ Web UI):
 | Tool | Example prompt → result |
 |---|---|
 | `jarvis_screen_card` | "What's the temperature?" → an `ha_climate` card with working +/− controls. "Show me the front door" → an `ha_camera` card (`feed_mode: live` for the real-time stream). "Play some music" → the music core starts the queue and a `music` card shows it with transport + browser playback. Cards can be created, shown, hidden, updated, deleted; `position: "auto"` finds free space. |
+| `jarvis_screen_camera` | "Open the camera" → a live `camera` card from the device's own camera. "What am I holding right now?" / "Can you describe what you see?" → grabs the current frame and answers through the vision LLM (Settings › Vision). "Close the camera" → removes the card. |
 | `jarvis_screen_layout` | "Switch to the security screen" → the named layout with the standard transition. |
 | `jarvis_screen_reactor` | "Move the reactor to the top left" / "Put the reactor back" → preset or `{x, y, scale}`; recolor (cyan/red/amber/green/`#rrggbb`), relabel. |
 | `jarvis_screen_say` | "Say 'right away, sir'" → TTS through the screen (browser engine) with the reactor pulsing on the waveform. |
