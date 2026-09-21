@@ -169,8 +169,10 @@ settings; per-screen overrides live on the manager's **Screens** tab.
 |---|---|---|
 | `VOICE_HISTORY_COUNT` | `12` | Past voice exchanges per screen replayed to the LLM as history (0–50; 0 = every turn starts fresh). The Voice tab can clear stored history. |
 | `CAMERA_REFRESH_S` | `5` | Default snapshot refresh for `ha_camera` cards in snapshot mode (per-card `refresh_s` overrides). |
-| `LIVE_FPS` | `8` | Frame rate for live-feed camera cards: 5 / 8 / 10 / 12 / 15 fps. 5–8 is the kiosk sweet spot; 10–15 suits desktops. |
-| `LIVE_MAX_STREAMS` | `3` | Cap on simultaneously running live feeds (the same camera on several cards/screens counts once). |
+| `LIVE_FPS` | `8` | Frame rate for **low-tier** live camera feeds (small tiles and camera walls): 5 / 8 / 10 / 12 / 15 fps. 5–8 is the kiosk sweet spot; 10–15 suits desktops. |
+| `LIVE_MEDIUM_FPS` | `20` | Frame rate for **medium-tier** feeds (720p — a single camera on a mid-size card): 10 / 15 / 20 / 25 / 30 fps. |
+| `LIVE_HIGH_FPS` | `24` | Frame rate for **high-tier** feeds (1080p — full-screen / popup cameras): 10 / 15 / 20 / 25 / 30 fps. |
+| `LIVE_MAX_STREAMS` | `14` | Cap on simultaneously running live feeds (the same camera on several cards/screens counts once): 2–16. |
 
 ### UniFi Protect (direct camera pipeline)
 
@@ -306,6 +308,8 @@ The **Manage** form is the per-screen profile (the big one — reference below).
 | **Unlock Audio (wav)** | *(none)* | Plays when the screen unlocks (browser engine) and **ducks to 20% while JARVIS speaks**, restoring full volume after. |
 | **Fail Voice (wav)** | *(none)* | Played with the red reactor when a face scan or PIN entry is rejected (face/PIN/voice screens; a tap screen can't fail). Unset = silent by design. |
 | **Success Voice (wav)** | *(none)* | Played on a successful unlock of any kind. |
+| **Device Camera** | off | Gates the screen-device's own camera per screen (see [Device camera](#device-camera-camera-card)): with it off, camera requests are refused for this screen, camera cards can't be created on it, and its browser never sends camera frames. |
+| **Live Camera Cap** | `4` | How many of this screen's camera cards hold real live streams (1–16, in card order); the rest fall back to 10-second stills instead of opening more streams — see [Live Camera Cap](#live-camera-cap-per-screen). |
 
 > The PIN code is verified server-side and **never shipped to the browser** —
 > the client only ever sees a "PIN is set" flag.
@@ -413,13 +417,47 @@ Per screen, `voice_input` = `none` / `tap` / `wake` (see the Screens table).
 - **snapshot** (default) — a JPEG re-fetched on a timer (`refresh_s`, default
   from `CAMERA_REFRESH_S`) pushed over SSE.
 - **live** — a real-time multipart MJPEG stream served by the core itself,
-  deduped by camera and torn down when no one is watching. Frame rate from
-  `LIVE_FPS`, concurrency capped by `LIVE_MAX_STREAMS`.
+  deduped by camera and torn down when no one is watching. Concurrency capped
+  by `LIVE_MAX_STREAMS`.
 - **Sources:** Home Assistant entities stream through HA's own MJPEG proxy;
   **UniFi Protect** devices (from Tater's integration, or the
   `PROTECT_*` fallback credentials) stream through a built-in direct
   pipeline (Public API + ffmpeg RTSPS decode). `feed_source: auto` picks per
   card.
+
+### Live tiers (by card size)
+
+Every live feed picks a tier from the card's rendered size, so a 12-camera
+wall stays cheap while a single camera fills the screen:
+
+- **low** — 360p at `LIVE_FPS` (default 8): small tiles and camera walls.
+- **medium** — 720p at `LIVE_MEDIUM_FPS` (default 20): mid-size cards.
+- **high** — 1080p at `LIVE_HIGH_FPS` (default 24): full-screen cameras and
+  the Automation tab's camera popup.
+
+A card is on the **camera-wall tier** whenever 5+ live camera cards are on
+screen and the card is narrower than 60% of the viewport — that's what keeps
+a 12-up grid from eating the Protect controller. The tier re-picks on resize
+(debounced 500 ms), streams start 400 ms apart (capped at 6 s) so a
+12-camera layout doesn't stampede the controller at once, and Home Assistant
+cameras share one proxy connection across tiers (only Protect re-decodes per
+tier).
+
+### Live Camera Cap (per screen)
+
+The Screens tab sets **Live Camera Cap** (1–16, default 4) per screen: that
+many camera cards hold real live streams, in card order; the rest of the
+screen's cameras fall back to still images (a fresh JPEG polled every 10 s,
+with a "STREAM LIMIT — STILL IMAGES" placeholder) instead of opening more
+streams. A 5–8" kiosk with the default cap shows 4 live cameras; a 15–32"
+wall can be raised to run all 12 live.
+
+### Camera audio
+
+Live Protect camera cards can play their camera's microphone audio: the
+**♪ AUDIO** button on the card opens a PCM sidecar stream (one audio source
+per screen, up to 4 total). Home Assistant proxy cameras have no audio
+path — the button reports NO AUDIO on them.
 
 ### Device camera (`camera` card)
 
