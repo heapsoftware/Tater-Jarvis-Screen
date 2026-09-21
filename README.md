@@ -17,6 +17,11 @@ style "JARVIS SCREEN" web display (default port 8610) controlled by Hydra:
 - Live MJPEG camera feeds (Home Assistant proxy or a UniFi Protect direct
   pipeline) and camera-event automations (fullscreen popups + spoken
   announcements).
+- Real-browser **Web Browser cards**: the core renders the assigned site
+  server-side (headless Chromium over CDP, same-origin proxy, or iframe) and
+  keeps the login, cookies, and navigated-to page per card — set up once on
+  a desktop, the card shows up signed-in on keyboard-less kiosk screens,
+  and voice turns can read the page.
 - Satellite voice control: requests spoken at a screen's **Linked Satellite**
   (a Tater SAT) drive that screen by voice — card, layout, reactor, say,
   alert, and lock actions route to the linked screen automatically, with no
@@ -33,6 +38,35 @@ style "JARVIS SCREEN" web display (default port 8610) controlled by Hydra:
 > so a plain-http LAN origin must be allowlisted or put behind TLS.
 > Full install, configuration, and usage instructions:
 > [`docs/jarvis_screen.md`](docs/jarvis_screen.md).
+
+## Web Browser card
+
+The `web` card is a real browser, not a link: the core renders the assigned
+site itself and streams it into the card, keeping the login session, cookies,
+and navigated-to page **per card** on the server — a card you set up once on
+a desktop shows up signed-in on keyboard-less kiosk screens. Renders resolve
+per card: **headless** (Chromium over CDP — live stream, trusted taps and
+typing, page text for voice turns), **proxy** (same-origin rewrite proxy with
+a server-side cookie jar, always available), or **direct** (iframe). Full
+setup flow and behavior:
+[docs/jarvis_screen.md](docs/jarvis_screen.md#web-browser-card).
+
+The Tater container ships no Chromium; point the core at a headless Chromium
+running elsewhere with the **External Browser Endpoint** setting
+(`WEB_CDP_ENDPOINT`) — e.g. a sidecar on the docker host:
+
+```bash
+docker run -d --name jarvis-chromium --restart unless-stopped \
+  -p 9222:9222 \
+  zenika/alpine-chrome \
+  --no-sandbox --remote-debugging-address=0.0.0.0 \
+  --remote-debugging-port=9222 --remote-allow-origins=*
+```
+
+Then set `WEB_CDP_ENDPOINT = ws://<docker-host>:9222` (Tater Settings →
+Jarvis Screen Settings; a bare `ws://host:port` is resolved through the
+endpoint's `/json/version`). With no browser reachable anywhere, cards fall
+back to the proxy render automatically.
 
 ## Install / update on a Tater host
 

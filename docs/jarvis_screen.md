@@ -203,6 +203,14 @@ you author in the manager — those are always exactly where you put them).
 | `HA_BASE_URL` | *(empty)* | e.g. `http://homeassistant.local:8123`. **Only used when the HA Tater integration has no token set** — the integration's URL/token are the primary source. |
 | `HA_TOKEN` | *(empty)* | Fallback long-lived token for direct HA REST access; ignored while the integration is configured. |
 
+### Web Browser cards
+
+| Setting | Default | Meaning |
+|---|---|---|
+| `CHROMIUM_PATH` | *(empty)* | Absolute path to a Chromium/Chrome binary for real-browser web cards. Blank auto-detects (`chromium`, `chromium-browser`, `google-chrome`, `headless_shell`) on the container's PATH. No browser found = web cards fall back to the proxy render. |
+| `WEB_CDP_ENDPOINT` | *(empty)* | `ws://host:port` of a remote headless Chromium's DevTools endpoint (e.g. a browser container — see [Web Browser card](#web-browser-card)). When set, real-browser web cards attach here instead of spawning a local binary. |
+| `WEB_SESSION_IDLE_S` | `300` | Seconds a real-browser web card session stays open with nobody watching its stream before the browser is closed (cookies are kept; the next view respawns and re-navigates to the saved home). 60–3600. |
+
 ---
 
 ## The Jarvis Screen manager tab
@@ -226,7 +234,7 @@ access-denied path without a camera).
 |---|---|---|
 | Text / Notes | `text` | |
 | JARVIS Chat | `console` | The chat card (id `jarvis_chat`) |
-| Web Browser | `web` | JARVIS can retarget it to any site |
+| Web Browser | `web` | A real browser on the card, login kept per card — see [Web Browser card](#web-browser-card) |
 | YouTube Player | `youtube` | Ref accepts a video id or a full URL |
 | Video Stream | `video` | Direct mp4/webm URL (cameras without an entity) |
 | Chart | `chart` | |
@@ -537,6 +545,94 @@ Auto-Show** core setting). JARVIS also keeps one on screen for
 `type music`, id `jarvis_music` — the screen reuses the existing card and
 switches layouts for you). The **AI_SIZE_MUSIC** setting overrides the
 generated card's default footprint (34×26).
+
+---
+
+## Web Browser card
+
+The `web` card is a real browser, not a link. The core renders the assigned
+site itself and streams it into the card, so a site that needs a login — a
+router panel, a weather service, a dashboard — shows up signed-in on every
+screen, including keyboard-less kiosks: the browser, its cookies, and the
+navigated-to page live on the server, never in the viewing device's browser.
+Voice turns can answer from the page too ("what's listed on the page?").
+
+### Render modes
+
+Each card has a **Web Mode** field (default `auto`) that resolves to one of
+three renders:
+
+- **headless** — the core drives a real Chromium over the DevTools protocol.
+  The page streams into the card as live MJPEG; taps and typing go in as
+  trusted browser input; cookies persist per card. Needs a Chromium binary —
+  one in the container (auto-detected, or `CHROMIUM_PATH`) or outside it
+  (`WEB_CDP_ENDPOINT`, below).
+- **proxy** — a same-origin rewrite proxy with a server-side cookie jar.
+  Zero dependencies and always available; simple server-rendered sites work
+  well, but bot-checked / SPA-heavy public sites resist it.
+- **direct** — a plain iframe. Only works for sites that allow framing.
+
+`auto` picks headless when a browser is reachable, then proxy, then direct.
+The Tater container ships **no Chromium**, so out of the box `auto` means
+proxy until the image gains a browser or you point the core at an external
+one (below).
+
+### Setting up a card (desktop → kiosk)
+
+Everything is server-side — session, cookies, and saved home URL live in the
+core's store keyed to the card — so you set the card up on a desktop and the
+kiosk just watches the same stream:
+
+1. Open the kiosk's screen on a desktop: `http://<host>:8610/?screen=<name>`
+   (append `&token=…` when `SCREEN_TOKEN` is set). The kiosk is on the same
+   feed and follows everything live — nothing to reload when you're done.
+2. Unlock with the PIN pad (the mouse works; face scan would want the
+   kiosk's camera).
+3. Put the layout with the card up (or add one in the manager's **Cards**
+   tab — the **Web Browser** template's **URL** field is the site, and the
+   optional **Login URL** is the site's sign-in page, used by the LOGIN
+   shortcut).
+4. Use the card like a browser: click the login link, tap **⌨ TYPE**, enter
+   your credentials, sign in, then click/navigate to the page you want as
+   the card's home.
+5. The home URL saves itself — after typing, the next navigation becomes the
+   card's home — or press **SAVE** to pin the current page deliberately.
+   Cookies are stored per card: two browser cards on two layouts are two
+   independent logins.
+6. From then on the card shows the saved page, refreshed: the first viewer
+   of a card's stream triggers a reload, and a layout reappearing later
+   lands on the saved home again.
+
+Idle sessions close after **WEB_SESSION_IDLE_S** (default 300 s) with the
+cookies kept — the next view respawns the browser and re-navigates. Crashes
+respawn with a backoff; five in ten minutes mark the card failed until you
+restart it from the card's menu.
+
+### External Chromium endpoint (the container has no browser)
+
+The Tater Docker image ships no browser, and the clean answer is not to wait
+for one: point the core at a headless Chromium running next to it with the
+**External Browser Endpoint** setting (`WEB_CDP_ENDPOINT`). A sidecar
+container on the docker host:
+
+```bash
+docker run -d --name jarvis-chromium --restart unless-stopped \
+  -p 9222:9222 \
+  zenika/alpine-chrome \
+  --no-sandbox --remote-debugging-address=0.0.0.0 \
+  --remote-debugging-port=9222 --remote-allow-origins=*
+```
+
+Then set `WEB_CDP_ENDPOINT` to `ws://<docker-host>:9222` in Tater Settings →
+Jarvis Screen Settings. A bare `ws://host:port` is resolved through the
+endpoint's `/json/version`; an endpoint with a path (`ws://host:port/…`) is
+used verbatim. Every web-card session opens its own tab on that browser, and
+cards fall back to the proxy render whenever the endpoint is unreachable.
+Cookies live in that browser's profile — a container restart signs sites
+back out unless you mount a persistent profile directory (see the image's
+documentation). `CHROMIUM_PATH` stays blank; nothing else to configure — if
+the Tater image ever ships a browser, the local binary is picked up
+automatically.
 
 ---
 
